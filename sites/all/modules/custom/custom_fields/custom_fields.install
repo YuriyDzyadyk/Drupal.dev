@@ -1,0 +1,14 @@
+<?php
+
+function custom_fields_field_schema($field) {
+  $columns = array(
+    'youtube_link' => array(
+      'type' => 'varchar',
+      'length' => 200,
+      'not null' => FALSE,
+    ),
+  );
+  return array(
+    'columns' => $columns,
+  );
+}

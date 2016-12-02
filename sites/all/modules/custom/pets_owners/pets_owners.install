@@ -1,0 +1,71 @@
+<?php
+/**
+ * Implements hook_schema().
+ */
+function pets_owners_schema() {
+  $schema = array();
+  $schema['owners'] = array(
+    'description' => 'Pets Owners.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'required' => TRUE,
+        'not null' => TRUE),
+      'name' => array(
+        'description' => 'Name.',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE),
+      'gender' => array(
+        'description' => 'The gender.',
+        'type' => 'varchar',
+        'length' => 10,
+        'required' => TRUE,
+        'not null' => TRUE),
+      'prefix' => array(
+        'description' => 'The prefix.',
+        'type' => 'varchar',
+        'length' => 5,
+        'required' => TRUE,
+        'not null' => TRUE),
+      'age' => array(
+        'description' => 'Age.',
+        'type' => 'int',
+        'length' => 10,
+        'required' => TRUE,
+        'not null' => TRUE),
+      'parents_fname' => array(
+        'description' => 'Parents first name.',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE),
+      'perents_lname' => array(
+        'description' => 'Parents last name.',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE),
+      'have_pet' => array(
+        'description' => 'If you have some pets',
+        'type' => 'int',
+        'not null' => TRUE),
+      'pets_names' => array(
+        'description' => 'Pets names.',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE),
+      'email' => array(
+        'description' => 'An E-mail.',
+        'type' => 'varchar',
+        'length' => 50,
+        'not null' => TRUE),
+
+    ),
+    'indexes' => array(
+      'pets_owners_form_email' => array('email'),
+      'pets_owners_form_name' => array('name'),
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}

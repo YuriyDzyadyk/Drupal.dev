@@ -1,0 +1,7 @@
+name = Pet owner entity
+description = An entity of pet_owner.
+core = 7.x
+package = My Modules
+
+dependencies[] = ctools
+

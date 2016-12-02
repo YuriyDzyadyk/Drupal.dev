@@ -1,0 +1,4 @@
+name = Page with news
+description = A block module that show news sorted by categories.
+core = 7.x
+package = My Modules

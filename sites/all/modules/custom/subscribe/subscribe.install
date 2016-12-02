@@ -1,0 +1,36 @@
+<?php
+/**
+* Implements hook_schema().
+*/
+function subscribe_schema() {
+$schema = array();
+    $schema['subscribers'] = array(
+        'description' => 'The subscribers.',
+        'fields' => array(
+            'id' => array(
+                'type' => 'serial',
+                'unsigned' => TRUE,
+                'required' => TRUE,
+                'not null' => TRUE),
+
+            'name' => array(
+                'description' => 'The name.',
+                'type' => 'varchar',
+                'length' => 50,
+                'required' => TRUE,
+                'not null' => TRUE),
+            'email' => array(
+                'description' => 'The name.',
+                'type' => 'varchar',
+                'length' => 50,
+                'not null' => TRUE),
+
+        ),
+        'indexes' => array(
+            'subscribe_form_email' => array('email'),
+        ),
+        'primary key' => array ('id')
+
+    );
+return $schema;
+}

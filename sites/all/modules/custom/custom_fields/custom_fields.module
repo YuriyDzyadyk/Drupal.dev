@@ -1,0 +1,183 @@
+<?php
+/**
+ * @file
+ * Field using the Field Types API.
+ */
+
+/***************************************************************
+ * Field Type API hooks
+ ***************************************************************/
+
+/******************  Show field in Field type list etc. ********/
+/**
+ * Implements hook_field_info().
+ *
+ * Provides the description of the field.
+ */
+function custom_fields_field_info() {
+  return array(
+    // We name our field as the associative name of the array.
+    'youtube_field' => array(
+      'label' => t('YouTube Field'),
+      'description' => t('Demonstrates youtube link with video icon.'),
+      'default_widget' => 'custom_fields_widget',
+      'default_formatter' => 'custom_fields_formatter',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function custom_fields_field_formatter_info() {
+  return array(
+    // This formatter just displays the hex value in the color indicated.
+    'custom_fields_formatter' => array(
+      'label' => t('Simple text-based formatter'),
+      'field types' => array('youtube_field'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_info().
+ * These widget type will eventually show up in hook_field_widget_form where we will have to flesh them out.
+ *
+ * @see field_example_field_widget_form()
+ */
+function custom_fields_field_widget_info() {
+  return array(
+    'custom_fields_widget' => array(
+      'label' => t('YouTube link'),
+      'field types' => array('youtube_field'),
+    ),
+  );
+}
+
+/******************  End Show field in Field type list etc. ********/
+
+/**
+ * Implements hook_field_validate().
+ *
+ * This hook gives us a chance to validate content that's in our
+ * field. If the item validates, we do nothing. If it doesn't
+ * validate, we add our own error notification to the $errors parameter.
+ *
+ * @see field_example_field_widget_error()
+ */
+function custom_fields_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  foreach ($items as $key => $item) {
+    if (isset($item['youtube_link'][0]) && !empty($item['youtube_link'][0])) {
+      if (!_custom_fields_get_id($item['youtube_link'][0])) {
+        $errors[$field['field_name']][$langcode][$key][] = array(
+          'error' => 'custom_fields_invalid',
+          'message' => t('It is not youtube link'),
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_widget_error().
+ * hook_field_widget_error() lets us figure out what to do with errors
+ * we might have generated in hook_field_validate(). Generally, we'll just call form_error().
+ *
+ * @see field_example_field_validate()
+ * @see form_error()
+ */
+function custom_fields_field_widget_error($element, $error, $form, &$form_state) {
+  switch ($error['error']) {
+    case 'custom_fields_invalid':
+      form_error($element, $error['message']);
+      break;
+  }
+}
+
+/**
+ * Implements hook_field_is_empty().
+ *
+ * Hook_field_is_empty() is where Drupal asks us if this field is empty.
+ * Return TRUE if it does not contain data, FALSE if it does. This lets
+ * the form API flag an error when required fields are empty.
+ */
+function custom_fields_field_is_empty($item, $field) {
+  return empty($item['youtube_link']);
+}
+
+/**
+ * Find video (for youtube) id to make it embed.
+ *
+ * @param string $url
+ *   Yuotubelink.
+ *
+ * @return string
+ *    return youtube id
+ */
+function _custom_fields_get_id($url) {
+  $video_id = FALSE;
+
+  if (preg_match('/youtube\.com\/watch\?v=([^\&\?\/]+)/', $url, $id)) {
+    $video_id = $id[1];
+  }
+  elseif (preg_match('/youtube\.com\/embed\/([^\&\?\/]+)/', $url, $id)) {
+    $video_id = $id[1];
+  }
+  elseif (preg_match('/youtube\.com\/v\/([^\&\?\/]+)/', $url, $id)) {
+    $video_id = $id[1];
+  }
+  elseif (preg_match('/youtu\.be\/([^\&\?\/]+)/', $url, $id)) {
+    $video_id = $id[1];
+  }
+  elseif (preg_match('/youtube\.com\/verify_age\?next_url=\/watch%3Fv%3D([^\&\?\/]+)/', $url, $id)) {
+    $video_id = $id[1];
+  }
+
+  return $video_id;
+}
+
+
+/**
+ * Implements hook_field_formatter_view().
+ *
+ * @see field_example_field_formatter_info()
+ */
+function custom_fields_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+
+  $element = array();
+  foreach ($items as $key => $item) {
+    $my_id = _custom_fields_get_id($item['youtube_link']);
+    $element[$key] = array(
+      '#type' => 'html_tag',
+      // 'a href=' . $item['youtube_link'] - For simple link.
+      '#tag'  => 'a href=' . $item['youtube_link'],
+      // $item['youtube_link'] or 'some name'- For simple link.
+      '#value' => '<iframe width="560" height="315" src="//www.youtube.com/embed/' . $my_id . '" frameborder="0" allowfullscreen></iframe>',
+
+    );
+  }
+  return $element;
+}
+
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * hook_widget_form() is where Drupal tells us to create form elements for
+ * our field's widget. (Show form when create an article, news, etc)
+ *
+ */
+function custom_fields_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items,$delta, $element) {
+
+  $value = isset($items[$delta]['youtube_link']) ? $items[$delta]['youtube_link'] : '';
+  // Save to bd two more fields and show them in the settings page (edit etc.)
+  $element['youtube_link']['#delta'] = $delta;
+  $element['youtube_link'][] = array(
+    '#title' => 'Add YouTube URL',
+    '#type' => 'textfield',
+    '#default_value' => $value,
+  );
+  return $element;
+}
+
+

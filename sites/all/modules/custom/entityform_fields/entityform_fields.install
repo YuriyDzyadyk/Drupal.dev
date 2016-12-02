@@ -1,0 +1,19 @@
+<?php
+
+function entityform_fields_field_schema($field) {
+  $columns = array(
+    'color' => array(
+      'type' => 'varchar',
+      'length' => 200,
+      'not null' => FALSE,
+    ),
+    'size' => array(
+      'type' => 'varchar',
+      'length' => 200,
+      'not null' => FALSE,
+    ),
+  );
+  return array(
+    'columns' => $columns,
+  );
+}

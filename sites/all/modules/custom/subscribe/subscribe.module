@@ -1,0 +1,92 @@
+<?php
+
+/**
+ * @file
+ *
+ */
+
+/**
+ * Create pass to function subscribe_form (at first should be name of module).
+ */
+function subscribe_menu() {
+  $items = array();
+  $items['admin/subscribe'] = array(
+    'title' => t('Subscribe'),
+    'description' => t('Here you can subscribe to us'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('subscribe_form'), //by function name
+    'access arguments' => array('access subscribe form'), //by key
+  );
+
+  return $items;
+}
+
+/**
+ * Create form (at first should be name of module).
+ */
+function subscribe_form($form, &$form_state) {
+
+  $form['subscriber_name'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Name'),
+      '#size' => 20
+  );
+
+  $form['subscriber_email'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Email'),
+      '#size' => 20
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_permission() and enable it in permission tab.
+ */
+function subscribe_permission() {
+  return array(
+    'access subscribe form' => array(
+      'title' => t('Acces to Subscribtion page'),
+    )
+  );
+}
+
+/**
+ * Implements inserting query.
+ */
+function subscribe_form_submit($form, &$form_state) {
+  db_insert('subscribers')
+        ->fields(
+            array(
+              'name'  => $form_state['values']['subscriber_name'],
+              'email' => $form_state['values']['subscriber_email'],)
+        )
+        ->execute();
+
+  drupal_set_message(t('Thank you for subscribtion'));
+
+}
+
+/**
+ * Mail validation.
+ */
+function subscribe_form_validate($form, &$form_state) {
+  if (!valid_email_address($form_state['values']['subscriber_email'])) {
+    form_set_error('mail_error', t('Check your email and retry.'));
+  }
+  elseif ($form_state['values']['subscriber_name'] == '') {
+    form_set_error('name_error', t(' All fields is required'));
+  }
+}
+
+
+
+
+

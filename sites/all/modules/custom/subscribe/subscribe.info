@@ -1,0 +1,5 @@
+name = Subscribe
+description = A block module that show subscribe form.
+core = 7.x
+package = My Modules
+

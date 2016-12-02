@@ -1,0 +1,938 @@
+<?php
+
+/**
+ * Create pass to function pets owners form (at first should be name of module)
+ */
+function pets_owners_menu() {
+  $items = array();
+  $items['admin/pets_owners'] = array(
+    'title' => t('Pets owners'),
+    'description' => t('Show a page with a sortable table'),
+    'page callback' => 'pets_owners_owners_list',
+    'access callback' => TRUE,
+
+  );
+
+  $items['admin/pets_owners/add'] = array(
+    'title' => t('Add owner'),
+    'description' => t('Pets owners form'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pets_owners_form'), //by function name
+    'access arguments' => array('access subscribe form'), //by key
+  );
+
+  $items['admin/pets_owners/change_names'] = array(
+    'title' => t('Change all names'),
+    'description' => t('Change all names if existing (with batch)'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pets_owners_change_names_form'), //by function name
+    'access arguments' => array('access subscribe form'), //by key
+  );
+
+  $items['admin/pets_owners/%/delete'] = array(
+    // "%" - its any argument in the third part of the path
+    'title' => t('Delete owner'),
+    'description' => t('delete owners'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pets_owners_delete_confirm', 2), // run pets_owners_delete_confirm from drupal_get_form
+    'access arguments' => array('access subscribe form'),
+  );
+
+  $items['admin/pets_owners/%/edit'] = array(
+    'title' => t('Edit owner'),
+    'description' => t('Update data'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pets_owners_edit_form', 2), //by function name
+    'access arguments' => array('access subscribe form'), //by key
+  );
+
+  return $items;
+}
+
+/**
+ * @param $header
+ * @return array|mixed
+ *
+ * select with caching
+ * orderBy and pager not working with caching
+ *
+ */
+function select_from_owners_tab() {
+
+  $result = &drupal_static(__FUNCTION__);
+
+  if (!isset($result)) {
+    if ($cache = cache_get('my_query_data')) {
+      $result = $cache->data;
+    }
+    else {
+      // Using the TableSort Extender is what tells the the query object that we
+      // are sorting.
+      $query = db_select('owners', 'o')
+      //  ->extend('TableSort')
+      //  ->extend('PagerDefault')->limit(5)
+        ->fields('o', array('id', 'name', 'gender', 'prefix', 'age', 'email'));
+      // Don't forget to tell the query object how to find the header information.
+      $result = $query
+      //  ->orderByHeader($header)
+        ->execute()->fetchAll(); //return array insted objects
+
+      cache_set('my_query_data', $result, 'cache');
+
+    }
+  }
+
+  return $result;
+
+
+}
+
+/**
+ * Build the table render array.
+ *
+ * @return array
+ *   A render array set for theming by theme_table().
+ */
+function pets_owners_owners_list() {
+ // $result = _pets_owners_all_nodes_select();
+  // We are going to output the results in a table with a nice header.
+  $header = array(
+    // The header gives the table the information it needs in order to make
+    // the query calls for ordering. TableSort uses the field information
+    // to know what database column to sort by 'field' => 'o.id' itc.
+    array('data' => t('id'), /*'field' => 'o.id'*/),
+    array('data' => t('Name'), /*'field' => 'o.name'*/),
+    array('data' => t('Gender'), /*'field' => 'o.gender'*/),
+    array('data' => t('Prefix'), /*'field' => 'o.prefix'*/),
+    array('data' => t('Age'), /*'field' => 'o.age'*/),
+    array('data' => t('E-mail'), /*'field' => 'o.email'*/),
+    array('data' => t('ACTIONS')),
+  );
+
+
+
+  $result = select_from_owners_tab($header);
+
+  $rows = array();
+  //change shown key to value !!
+  $gender = get_gender();
+  $prefix = get_prefix();
+  // $result as $row -- foreach result row by row
+  // for data showing
+  foreach ($result as $row) {
+    // Change var type. make from object -- array.
+    $row = (array) $row;
+    // Change shown key to value !!
+    $row['gender'] = $gender[$row['gender']];
+    $row['prefix'] = $prefix[$row['prefix']];
+
+
+    // FOR DELETE OPTION.
+    $delete_link = l(t('Delete'), "admin/pets_owners/{$row['id']}/delete");
+    $edit_link = l(t('Edit'), "admin/pets_owners/{$row['id']}/edit");
+    $row['actions'] = $delete_link . '  ' . $edit_link;
+
+    // dpm($row);
+    // Normally we would add some nice formatting to our rows  .
+    // but for our purpose we are simply going to add our row   .
+    // to the array.
+    $rows[] = array('data' => $row);
+
+
+  }
+
+  // Build the table for the nice output.
+// $build['pets_owners_table'] = array(
+//
+//    array(
+//      '#theme' => 'table',
+//      '#header' => $header,
+//      '#rows' => $rows,
+//    ),
+//    //for pager
+//    array(
+//      '#theme' => 'pager',
+//    ),
+//  );
+$build = theme('table', array('header' => $header,  'rows' => $rows,));
+//$build .= theme('pager');
+  return $build;
+}
+
+/**
+ * Create form (at first should be name of module).
+ */
+function pets_owners_form($form, &$form_state) {
+
+  $a = array();
+  $b = 0;
+  while ($b++ < 17) {
+    $a[] = array('value' => $b);
+  }
+
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#size' => 20,
+    '#maxlength' => 100,
+    '#required' => TRUE,
+  );
+
+  $form['gender'] = array(
+    '#type' => 'radios',
+    '#title' => ('Set your gender'),
+    //'#description' => t('Gender chooser'),
+    '#options' => get_gender(),
+    '#required' => TRUE,
+  );
+
+  $form['prefix'] = array(
+    '#type' => 'select',
+    '#title' => t('Prefix'),
+    '#options' => get_prefix(),
+    //'#description' => t('Set your status'),
+  );
+
+  $form['age'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Age'),
+    '#size' => 10,
+    '#required' => TRUE,
+  );
+
+  $form['parents'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Parents'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#states' => array(
+      // Only show this field when the 'store' checkbox is enabled.
+      'enabled' => array(
+        ':input[name="age"]' => $a,
+      ),
+      'visible' => array(
+        ':input[name="age"]' => $a,
+      ),
+    ),
+  );
+
+
+  $form['parents']['father_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Father\'s name'),
+
+  );
+  $form['parents']['mother_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Mother\'s name'),
+
+  );
+
+  $form['havePet'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Have you some pets?'),
+  );
+
+  $form['pet_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Names(s) of your pet(s)'),
+    '#states' => array(
+      // Only show this field when the 'store' checkbox is enabled.
+      'visible' => array(
+        ':input[name="havePet"]' => array('checked' => TRUE),
+      ),
+      'enabled' => array(
+        ':input[name="havePet"]' => array('checked' => TRUE),
+      ),
+    ),
+);
+
+
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('E-mail'),
+    '#required' => TRUE,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+
+  );
+
+  return $form;
+}
+
+function pets_owners_form_validate($form, &$form_state) {
+  if (!valid_email_address($form_state['values']['email'])) {
+    form_set_error('mail_error', t('Check your email and retry.'));
+  }
+  if (!is_numeric($form_state['values']['age'])) {
+    form_set_error('age_error1', t('Age should be numeric'));
+  }
+  elseif ($form_state['values']['age'] >= 120 || $form_state['values']['age'] <= 0) {
+    form_set_error('age_error2', t('Age can be only between 0 and 120.'));
+  }
+  if (strlen($form_state['values']['name']) > 100) {
+    form_set_error('name_error', t('Too much symbols'));
+  }
+  if ($form_state['values']['age'] >= 17 || $form_state['values']['age'] <= 0) {
+    $form_state['values']['father_name'] = '';
+    $form_state['values']['mother_name'] = '';
+  }
+  if ($form_state['values']['havePet'] == FALSE) {
+    $form_state['values']['pet_name'] = '';
+  }
+
+
+}
+
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function pets_owners_cron_queue_info() {
+  $queues = array();
+  $queues['queue_for_pets_owners'] = array(
+    'worker callback' => 'pets_owners_insert',
+    'time' => 10, //seconds to spend working on the queue
+  );
+  return $queues;
+}
+
+
+/**
+ * Implements inserting query.
+ */
+function pets_owners_form_submit($form, &$form_state) {
+
+
+  $pets_owner = array(
+    'name' => isset($form_state['values']['name']) ? $form_state['values']['name'] : '',
+    'gender' => isset($form_state['values']['gender']) ? $form_state['values']['gender'] : '',
+    'prefix' => isset($form_state['values']['prefix']) ? $form_state['values']['prefix'] : '',
+    'age' => isset($form_state['values']['age']) ? $form_state['values']['age'] : '',
+    'parents_fname' => isset($form_state['values']['father_name']) ? $form_state['values']['father_name'] : '',
+    'perents_lname' => isset($form_state['values']['mother_name']) ? $form_state['values']['mother_name'] : '',
+    'have_pet' => isset($form_state['values']['havePet']) ? $form_state['values']['havePet'] : '',
+    'pets_names' => isset($form_state['values']['pet_name']) ? $form_state['values']['pet_name'] : '',
+    'email' => isset($form_state['values']['email']) ? $form_state['values']['email'] : '',
+  );
+
+  //Que with $pets_owners  (they will inserts after run cron)
+  $queue = DrupalQueue::get('queue_for_pets_owners');
+  $queue->createItem($pets_owner);
+  dpm($queue->numberOfItems());
+
+}
+//inserting Que
+function pets_owners_insert($item) {
+  db_insert('owners')
+    ->fields($item)
+    ->execute();
+  clear_cache();
+}
+  /**
+   *
+   * Confirm form
+   * @return mixed - return form with question
+   *
+   */
+
+function pets_owners_delete_confirm() {
+
+  $question = t('Are you sure you want to delete this pets owners?');
+  $path = 'admin/pets_owners';
+  $description = t('This action cannot be undone.');
+  $yes = t('Delete pets owners');
+  $no = t('Cancel');
+
+  $confirm = confirm_form(array(), $question, $path, $description, $yes, $no);
+  return $confirm;
+
+}
+
+/**
+ *
+ * Make action when we click submit in "pets_owners_delete_confirm" form (first part of name should be repeat from confirm form)
+ *
+ * @param $form_state
+ *
+ */
+
+function pets_owners_delete_confirm_submit($form, &$form_state) {
+
+  $nid = $form_state['build_info']['args'][0];
+ // dpm($nid);
+  db_delete('owners')
+    ->condition('id', $nid)
+    ->execute();
+
+  clear_cache();
+
+  return drupal_goto('admin/pets_owners');
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ * @param $nid --
+ * @return mixed
+ *
+ * Create form (at first should be name of module).
+ *
+ */
+function pets_owners_edit_form($form, &$form_state, $nid) {
+
+//dpm($nid);
+  $query = db_select('owners', 'o')
+    ->fields('o')
+    ->condition('id', $nid);
+  $result = $query->execute()->fetchAll();
+
+
+  $default = array();
+
+  if (isset($result[0])) {
+//convert object to array
+    $default = (array) $result[0];}
+  $a = array();
+  $b = 0;
+  while ($b++ < 17) {
+    $a[] = array('value' => $b);
+  }
+
+ // dpm($default['perents_lname']);
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#size' => 20,
+    '#maxlength' => 100,
+    '#required' => TRUE,
+    '#default_value' => isset($default['name'])? $default['name'] : '',
+  );
+
+  $form['gender'] = array(
+    '#type' => 'radios',
+    '#title' => ('Set your gender'),
+    //'#description' => t('Gender chooser'),
+    '#default_value' => isset($default['gender'])? $default['gender'] : '',
+    '#options' => get_gender(),
+    '#required' => TRUE,
+  );
+
+  $form['prefix'] = array(
+    '#type' => 'select',
+    '#title' => t('Prefix'),
+    '#default_value' => isset($default['prefix'])? $default['prefix'] : '',
+    '#options' => get_prefix(),
+    //'#description' => t('Set your status'),
+  );
+
+  $form['age'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Age'),
+    '#size' => 10,
+    '#required' => TRUE,
+    '#default_value' => isset($default['age'])? $default['age'] : '',
+  );
+
+  $form['parents'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Parents'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#states' => array(
+      // Only show this field when the 'store' checkbox is enabled.
+      'visible' => array(
+        ':input[name="age"]' => $a,
+      ),
+    ),
+  );
+
+  $form['parents']['father_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Father\'s name'),
+    '#default_value' => isset($default['parents_fname'])? $default['parents_fname'] : '',
+
+  );
+  $form['parents']['mother_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Mother\'s name'),
+    '#default_value' => isset($default['perents_lname'])? $default['perents_lname'] : '',
+
+  );
+
+  $form['havePet'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Have you some pets?'),
+    '#default_value' => isset($default['havePet'])? $default['havePet'] : '',
+  );
+
+  $form['pet_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Names(s) of your pet(s)'),
+    '#default_value' => isset($default['pet_name'])? $default['pet_name'] : '',
+    '#states' => array(
+      // Only show this field when the 'store' checkbox is enabled.
+      'visible' => array(
+        ':input[name="havePet"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('E-mail'),
+    '#required' => TRUE,
+    '#default_value' => isset($default['email'])? $default['email'] : '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+
+  );
+  return $form;
+}
+
+
+function pets_owners_edit_form_submit($form, &$form_state) {
+  $nid = $form_state['build_info']['args'][0];
+ // dpm($form_state);
+  db_update('owners')
+    ->fields(
+      array(
+        'name'  => isset($form_state['values']['name']) ? $form_state['values']['name'] : '',
+        'gender'  => isset($form_state['values']['gender']) ? $form_state['values']['gender'] : '',
+        'prefix'  => isset($form_state['values']['prefix']) ? $form_state['values']['prefix'] : '',
+        'age'  => isset($form_state['values']['age']) ? $form_state['values']['age'] : '',
+        'parents_fname'  => isset($form_state['values']['father_name']) ? $form_state['values']['father_name'] : '',
+        'perents_lname'  => isset($form_state['values']['mother_name']) ? $form_state['values']['mother_name'] : '',
+        'have_pet'  => isset($form_state['values']['havePet']) ? $form_state['values']['havePet'] : '',
+        'pets_names'  => isset($form_state['values']['pet_name']) ? $form_state['values']['pet_name'] : '',
+        'email' => isset($form_state['values']['email']) ? $form_state['values']['email'] : '',)
+    )
+    ->condition('id', $nid)
+    ->execute();
+
+  clear_cache();
+  drupal_set_message(t('Done, data changed'));
+  return drupal_goto('admin/pets_owners');
+}
+
+function get_prefix(){
+  $prefix = array(
+    0 => t('Mr'),
+    1 => t('Mrs'),
+    2 => t('Ms')
+  );
+  return  $prefix;
+
+}
+
+function get_gender(){
+
+ $gender = array(
+    'male' => t('Male'),
+    'female' => t('Female'),
+    'unknown' => t('Unknown')
+ );
+return $gender;
+}
+
+function clear_cache(){
+
+  cache_clear_all('my_query_data', 'cache');
+  drupal_static_reset('select_from_owners_tab');
+
+}
+
+function pets_owners_change_names_form(){
+  $form['old_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Old Name'),
+    '#size' => 20,
+    '#maxlength' => 100,
+    '#required' => TRUE,
+  );
+
+  $form['new_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New Name'),
+    '#size' => 20,
+    '#maxlength' => 100,
+    '#required' => TRUE,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+
+  );
+
+  return $form;
+}
+
+// menu callback function - sets up the batch
+function pets_owners_change_names_form_submit(&$form_state,$form ) {
+  $result = select_from_owners_tab();
+  $batch = array(
+    'operations' => array(),
+    'finished' => 'pets_owners_batch_finished', // runs after batch is finished
+    'title' => t('Processing Import'),
+    'init_message' => t('Process is starting.'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('Import has encountered an error.'),
+  );
+
+
+  $progress = 0; // where to start
+  $limit = 3; // how many to process for each run
+  $max = db_query('SELECT COUNT(DISTINCT id) FROM {owners}')->fetchField(); // how many records to process until stop - can do query here to get max times to run
+
+  $res_fin = array_chunk($result, $limit);
+  $i = 0;
+  while ($progress <= $max) {
+    $batch['operations'][] = array('pets_owners_change_names', array($progress, $limit, $form_state, $res_fin[$i]));
+    $progress = $progress + $limit;
+    $i++;
+  }
+
+  batch_set($batch);
+  batch_process('admin/pets_owners'); // page to return to after complete
+}
+
+
+// this is what runs multiple times per batch
+// progress and limit and is updated during each run
+function pets_owners_change_names($progress, $limit, $form_state, $result, &$context) {
+
+ // dpm($result);
+  // Reset counter for debug information.
+  $_SESSION['http_request_count'] = 0;
+
+//  if (empty($context['sandbox'])) {
+//    $context['sandbox'] = array();
+//    $context['sandbox']['progress'] = 0;
+//    // $context['sandbox']['current_node'] = 0;
+//
+//    // Save node count for the termination message.
+//    $context['sandbox']['max'] = db_query('SELECT COUNT(DISTINCT id) FROM {owners}')->fetchField() ;
+//  }
+  // use $progress and $limit to only run that amount of records
+  // example using db_select
+  foreach ($result as $row) {
+    //dpm($row);
+
+    if($row->name == $form_state['old_name']['#value']) {
+     //  dpm($row);
+      $nid = $row->id;
+      db_update('owners')
+        ->fields(
+          array(
+            'name' => isset($form_state['new_name']['#value']) ? $form_state['new_name']['#value'] : ''
+          )
+        )
+        ->condition('id', $nid)
+        ->execute();
+
+      $context['results'][] =  $nid . ' : ' . check_plain($row->name);
+    }
+  }
+
+
+  // update progress for message
+  $progress = $progress + $limit;
+  // update message during each run so you know where you are in the process
+  $context['message'] = 'Now processing ' . $progress . ' - ' . $context['results'][0] . ' processed';
+  _pets_owners_update_http_requests();
+
+
+// Update our progress information.
+// $context['sandbox']['progress']++;
+////$context['sandbox']['current_node'] = $node->nid;
+// //Inform the batch engine that we are not finished,
+// //and provide an estimation of the completion level we reached.
+//if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+//  $context['finished'] = ($context['sandbox']['progress'] >= $context['sandbox']['max']);
+//}
+
+
+}
+
+function pets_owners_batch_finished($success, $results, $operations) {
+  if ($success) {
+
+    drupal_set_message(t('@count results processed in @requests HTTP requests.', array('@count' => count($results), '@requests' => _pets_owners_get_http_requests())));
+    drupal_set_message('Changes is completed');
+
+    clear_cache();
+  }
+  else {
+    $error_operation = reset($operations);
+    $message = t('An error occurred while processing %error_operation with arguments: @arguments', array(
+      '%error_operation' => $error_operation[0],
+      '@arguments' => print_r($error_operation[1], TRUE)
+    ));
+    drupal_set_message($message, 'error');
+  }
+}
+
+/**
+ * Utility function to increment HTTP requests in a session variable.
+ */
+function _pets_owners_update_http_requests() {
+  $_SESSION['http_request_count']++;
+}
+
+/**
+ * Utility function to count the HTTP requests in a session variable.
+ *
+ * @return int
+ *   Number of requests.
+ */
+function _pets_owners_get_http_requests() {
+  return !empty($_SESSION['http_request_count']) ? $_SESSION['http_request_count'] : 0;
+}
+
+
+///**
+// * Implements hook_cron().
+// * cron make nodes unpublished (entity approach, without db_update)
+// *
+// */
+//function pets_owners_cron() {
+//  $result = _pets_owners_all_nodes_select();
+//
+//  foreach ($result as $row) {
+//    $node = node_load($row->nid);
+//    $node->status = NODE_NOT_PUBLISHED;
+//    node_save($node);
+//  }
+//}
+//
+//function _pets_owners_all_nodes_select() {
+//  $day_before_yesterday = time() - 86400 * 2;
+//  $query = db_select('node', 'n');
+//  $query->fields('n', array('nid'));
+//  $query->condition('n.status', NODE_PUBLISHED);
+//  $query->condition('n.created', $day_before_yesterday, '<');
+//
+//  $result = $query->execute()->fetchAll();
+//  return $result;
+//}
+
+function pets_owners_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module','pets_owners'). '/views',);
+}
+
+/********************************* VBO ************************************************/
+
+/**    VBO for view VBO
+ * Implement hook_action_info
+ */
+function pets_owners_action_info() {
+  return array(
+    'pets_owners_custom_action' => array(
+      'type' => 'entity',
+      'label' => t('Search and replace gender in a field'),
+      'behavior' => array(),
+      'configurable' => FALSE,
+      'vbo_configurable' => TRUE,
+      'triggers' => array('any'),
+    ),
+  );
+}
+
+//function pets_owners_custom_action_views_bulk_operations_form($options) {
+//  $form = array();
+//  $form['gender'] = array(
+//    '#type' => 'select',
+//    '#title' => t('Choose the gender'),
+//    '#options' => array(
+//      'Iron Man' => t('Iron Man'),
+//      'Bat Man' => t('Bat Man'),
+//    ),
+//    '#default_value' => !empty($options['gender']) ? $options['gender'] : '',
+//  );
+//
+//  return $form;
+//}
+
+function pets_owners_custom_action_form($settings, &$form_state) {
+  $form = array();
+  $form['gender'] = array(
+    '#type' => 'select',
+    '#title' => t('Choose the gender'),
+    '#options' => array(
+      'male' => t('Male'),
+      'female' => t('Female'),
+    ),
+    '#required' => TRUE,
+    //'#default_value' => isset($settings['settings']['hero']) ? $settings['settings']['hero'] : '',
+  );
+  return $form;
+}
+
+function pets_owners_custom_action_submit($form, $form_state) {
+  $return = array();
+ // dpm($form_state);
+  $return['gender'] = $form_state['values']['gender'];
+  return $return; //Note, return value here must be an array.
+}
+
+function pets_owners_custom_action(&$node, $context) {
+  $message = t('Node title is %title. Sincerely, %hero', array(
+    '%title' => $node->title,
+    '%hero' => $context['gender'],
+  ));
+  drupal_set_message($message);
+}
+
+/********************************* API ************************************************/
+
+///**
+// * Implements hook_ctools_plugin_api().
+// */
+//function pets_owners_ctools_plugin_api($owner, $api) {
+//  if ($owner == 'services' && $api == 'services') {
+//    return array(
+//      'version' => 3,
+//      'file' => 'pets_owners.services.inc'
+//    );
+//  }
+//}
+
+/**
+ * Implements hook_services_resources().
+ */
+function pets_owners_services_resources() {
+
+  $resources = array(
+    'pets_owners_api' => array(
+      'operations' => array(
+//      'get' => array(
+//        'file' => array(
+//          'type' => 'inc',
+//          'module' => 'pets_owners',
+//          'name' => 'pets_owners.resource',
+//        ),
+//        'callback' => '_node_resource_retrieve',
+//        'args' => array(
+//          array(
+//            'name' => 'node',
+//            'optional' => FALSE,
+//            'source' => 'data',
+//            'description' => 'The node data to create',
+//            'type' => 'array',
+//          ),
+//        ),
+//        // 'access callback' => '_node_resource_access',
+//        'access arguments' => array('view'),
+//        'access arguments append' => TRUE,
+//      ),
+
+        'retrieve' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'pets_owners',
+            'name' => 'pets_owners.resource',
+          ),
+          'callback' => '_pets_owners_retrieve',
+          'args' => array(
+            array(
+              'name' => 'pid',
+              'optional' => FALSE,
+              'source' => array('path' => 0),
+              'type' => 'string',
+              'description' => 'The pid of the pet owner to get',
+            ),
+          ),
+          'access callback' => '_pets_owners_provide_access',
+//          'access arguments' => array('view'),
+//          'access arguments append' => TRUE,
+        ),
+        'create' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'pets_owners',
+            'name' => 'pets_owners.resource',
+          ),
+          'callback' => '_pets_owners_create',
+          'args' => array(
+          array(
+              'name' => 'datat',
+              'optional' => FALSE,
+              'source' => 'data',
+              'description' => 'The owner data to create',
+              'type' => 'array',
+            ),
+          ),
+          'access callback' => '_pets_owners_provide_access',
+//          'access arguments' => array('update'),
+//          'access arguments append' => TRUE,
+        ),
+        'update' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'pets_owners',
+            'name' => 'pets_owners.resource',
+          ),
+          'callback' => '_pets_owners_update',
+          'args' => array(
+            array(
+              'name' => 'pid',
+              'optional' => FALSE,
+              'source' => array('path' => 0),
+              'type' => 'int',
+              'description' => 'The nid of the node to get',
+            ),
+            array(
+              'name' => 'datat',
+              'optional' => FALSE,
+              'source' => 'data',
+              'description' => 'The node data to update',
+              'type' => 'array',
+            ),
+          ),
+          'access callback' => '_pets_owners_provide_access',
+//          'access arguments' => array('update'),
+//          'access arguments append' => TRUE,
+        ),
+        'delete' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'pets_owners',
+            'name' => 'pets_owners.resource',
+          ),
+          'callback' => '_pets_owners_delete',
+          'args' => array(
+            array(
+              'name' => 'pid',
+              'optional' => FALSE,
+              'source' => array('path' => 0),
+              'type' => 'int',
+            ),
+          ),
+          'access callback' => '_pets_owners_provide_access',
+//          'access arguments' => array('access content'),
+//          'access arguments append' => TRUE,
+        ),
+      ),
+    ),
+  );
+  return $resources;
+}
+
+
+
+
+
+
+
+
+

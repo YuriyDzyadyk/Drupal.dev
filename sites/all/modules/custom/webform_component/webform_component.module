@@ -1,0 +1,32 @@
+<?php
+///**
+// * Created by PhpStorm.
+// * User: office
+// * Date: 30.11.16
+// * Time: 11:38
+// */
+//
+//function webform_component_webform_component_info() {
+//
+//    $components = array();
+//    $components['size_color'] = array(
+//      'label' => t('Color and Size'),
+//      'description' => t('Basic textfield type for two select boxes: color and size.'),
+//      'features' => array(
+//        'email' => TRUE,
+//        'email_name' => FALSE,
+//        'email_address' => FALSE,
+//        'email_name' => FALSE,
+//        'required' => TRUE,
+//        'title_display' => TRUE,
+//        'title_inline' => TRUE,
+//        'conditional' => FALSE,
+//        'group' => FALSE,
+//        'spam_analysis' => FALSE,
+//        'attachment' => FALSE,
+//      ),
+//      'file' => 'components/size_color.inc',
+//    );
+//
+//  return $components;
+//}

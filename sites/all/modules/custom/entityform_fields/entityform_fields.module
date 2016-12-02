@@ -1,0 +1,128 @@
+<?php
+/**
+ * @file
+ * Field using the Field Types API.
+ */
+
+/***************************************************************
+ * Field Type API hooks
+ ***************************************************************/
+
+/******************  Show field in Field type list etc. ********/
+/**
+ * Implements hook_field_info().
+ *
+ * Provides the description of the field.
+ */
+function entityform_fields_field_info() {
+  return array(
+    // We name our field as the associative name of the array.
+    'color_size' => array(
+      'label' => t('Color-size Field'),
+      'description' => t('Colors and size lists'),
+      'default_widget' => 'entityform_fields_widget',
+      'default_formatter' => 'entityform_fields_formatter',
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function entityform_fields_field_formatter_info() {
+  return array(
+    'entityform_fields_formatter' => array(
+      'label' => t('Simple color and size formatter'),
+      'field types' => array('color_size'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_info().
+ * These widget type will eventually show up in hook_field_widget_form where we will have to flesh them out.
+ *
+ * @see field_example_field_widget_form()
+ */
+function entityform_fields_field_widget_info() {
+  return array(
+    'entityform_fields_widget' => array(
+      'label' => t('List of colors and size'),
+      'field types' => array('color_size'),
+    ),
+  );
+}
+
+/******************  End Show field in Field type list etc. ********/
+
+/**
+ * Implements hook_field_is_empty().
+ *
+ * Hook_field_is_empty() is where Drupal asks us if this field is empty.
+ * Return TRUE if it does not contain data, FALSE if it does. This lets
+ * the form API flag an error when required fields are empty.
+ */
+function entityform_fields_field_is_empty($item, $field) {
+  return empty(array($item['color'],$item['size']));
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ *
+ * @see field_example_field_formatter_info()
+ */
+function entityform_fields_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+
+  foreach ($items as $key => $item) {
+    $element[$key] = array(
+      '#type' => 'html_tag',
+      '#tag'  => 'h3',
+      '#value' => 'Color is ' . $item['color'] . ' and size is ' . $item['size'],
+
+    );
+  }
+
+  return $element;
+}
+
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * hook_widget_form() is where Drupal tells us to create form elements for
+ * our field's widget. (Show form when create an article, news, etc)
+ *
+ */
+function entityform_fields_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items,$delta, $element) {
+
+  $element['color'] = array(
+    '#type' => 'select',
+    '#title' => t('color'),
+    '#options' => array(
+      'green' => t('Green'),
+      'blue' => t('Blue'),
+      'black' => t('Black'),
+    ),
+   // '#default_value' => $category['selected'],
+    '#description' => t('Set color please'),
+  );
+  $element['size'] = array(
+    '#type' => 'select',
+    '#title' => t('Selected'),
+    '#options' => array(
+      'S' => t('S'),
+      'L' => t('L'),
+      'XL' => t('XL'),
+    ),
+   // '#default_value' => $category['selected'],
+    '#description' => t('Set size please'),
+  );
+
+  return $element;
+}
+
+
+
+
+

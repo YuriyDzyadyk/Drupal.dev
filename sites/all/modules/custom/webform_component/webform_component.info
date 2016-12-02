@@ -1,0 +1,4 @@
+name = Webform component for color and size
+description = Custom component for webform that will show two selectboxes: color and size.
+core = 7.x
+package = My Modules

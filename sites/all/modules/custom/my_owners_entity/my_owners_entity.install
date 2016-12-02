@@ -1,0 +1,38 @@
+<?php
+
+function my_owners_entity_schema() {
+  $schema['my_owners'] = array (
+    'description' => 'The main store for our entity',
+    'export' => array(
+      'key' => 'name',
+      'key name' => 'Name',
+      'primary key' => 'pid',
+      'identifier' => 'preset', // Exports will be defined as $preset
+      'default hook' => 'default_my_owners_entity_preset',  // Function hook name.
+      'api' => array(
+        'owner' => 'my_owners_entity',
+        'api' => 'default_my_owners_entity_presets',  // Base name for api include files.
+        'minimum_version' => 1,
+        'current_version' => 1,
+      ),
+    ),
+    'fields' => array(
+      'pid' => array(
+        'description' => 'Primary key for our table of owners',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'no export' => TRUE, // Do not export database-only keys.
+      ),
+      'name' => array(
+        'description' => 'The actual note',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE
+      ),
+    ),
+    'primary key' => array('pid'),
+  );
+
+  return $schema;
+}

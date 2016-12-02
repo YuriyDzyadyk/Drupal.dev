@@ -1,0 +1,7 @@
+name = Subscribe alter name
+description = A block module that form with new name.
+core = 7.x
+package = My Modules
+
+; this module don't work without subscribe
+dependencies[] = subscribe

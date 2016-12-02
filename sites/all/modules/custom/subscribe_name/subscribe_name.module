@@ -1,0 +1,14 @@
+<?php
+
+/**
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ *
+ */
+function subscribe_name_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'subscribe_form') {
+    $form['subscriber_name']['#title'] = t('First & Last name');
+  }
+}
+

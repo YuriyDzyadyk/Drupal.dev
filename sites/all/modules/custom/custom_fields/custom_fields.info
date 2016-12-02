@@ -1,0 +1,4 @@
+name = Custom Fields For Developers
+description = Custom Fields For Developers.
+core = 7.x
+package = My Modules

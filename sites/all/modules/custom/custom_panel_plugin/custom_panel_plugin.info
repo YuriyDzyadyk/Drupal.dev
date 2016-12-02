@@ -1,0 +1,6 @@
+name = Custom Panel Plagin
+description = Custom Panel Plagin.
+core = 7.x
+package = My Modules
+
+

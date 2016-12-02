@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Last news (block) feature.
+ */
+
+include_once 'last_news_block_.features.inc';

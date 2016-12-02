@@ -1,0 +1,12 @@
+name = Pets owners
+description = A block module that show pets owners form.
+core = 7.x
+package = My Modules
+
+dependencies[] = views
+files[] = pets_owners.module
+files[] = pets_owners.install
+files[] = views/pets_owners.views.inc
+files[] = views/pets_owners_handler_field_operations.inc
+
+dependencies[] = services

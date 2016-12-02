@@ -1,0 +1,356 @@
+<?php
+
+/**
+ * @file
+ * Includes main functionality for module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function page_with_grouped_news_menu() {
+  $items = array();
+
+  $items['page_with_grouped_news'] = array(
+    'title' => t('Grouped news'),
+    'description' => t('Here you can find news'),
+    'page callback' => 'page_with_grouped_news_page_view',
+    'access arguments' => array('access content'),
+  );
+
+  // for AJAX
+  $items['ajax_link_callback'] = array(
+    'page callback' => 'page_with_grouped_ajax_link_change_color',
+    'access callback' => TRUE,
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+
+  $items['page_with_grouped_news/reg'] = array(
+    'description' => t('Subscriber form'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('page_with_grouped_news_register_form'), //by function name
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+/**
+ * Create form (at first should be name of module).
+ */
+function page_with_grouped_news_select_news() {
+
+
+  global $language;
+
+  $result = &drupal_static(__FUNCTION__);
+
+  if (!isset($result)) {
+    if ($cache = cache_get('page_with_grouped_news_data')) {
+      $result = $cache->data;
+    }
+    else {
+      $query = db_select('field_data_field_categories', 'fdfc');
+      $query->join('taxonomy_term_data', 'ttd', 'ttd.tid = fdfc.field_categories_tid');
+      $query->rightJoin('node', 'n', 'n.nid = fdfc.entity_id');
+      $query
+        ->fields('ttd', array('name', 'tid'))
+        ->fields('n', array('title', 'type', 'nid', 'created'))
+        ->condition('n.type', 'news')
+        ->condition('n.status', NODE_PUBLISHED)
+        ->condition('n.language', $language->language)
+        ->orderBy('fdfc.field_categories_tid', 'DESC')
+        ->orderBy('n.nid', 'DESC');
+
+
+      $result = $query
+        ->execute()
+        ->fetchAll();
+
+      cache_set('page_with_grouped_news_data', $result, 'cache');
+    }
+  }
+  return $result;
+}
+
+function page_with_grouped_news_page_view() {
+  drupal_add_library('system', 'drupal.ajax');
+
+  $result = page_with_grouped_news_select_news();
+  // connect JS file
+  drupal_add_js(drupal_get_path('module', 'page_with_grouped_news') . '/page_with_grouped_news.js');
+  $items = array();
+ // $counter = 0;
+  foreach ($result as $row) {
+    if ($row->name == '') {
+      $row->name = t('No category');
+    }
+    // AJAX , array('attributes' => array('class' => array('use-ajax')))
+    $link = l($row->title, "ajax_link_callback/nojs/", array(
+        'attributes' => array(
+          'class' => array(
+            'use-ajax',
+          ),
+        'id' => $row->tid . '_' . $row->nid,
+        )
+      )
+    );
+    // List creating
+    $items[$row->tid]['data'] = $row->name;
+    // Create link for $row->title by $row->nid.
+    $items[$row->tid]['children'][$row->nid] = array(
+    // 'data' => l($row->title, "node/{$row->nid}"),
+    // 'data for AJAX'
+      'data' => $link,
+    );
+
+  // $counter++;
+  }
+
+  $title = t('News by categories');
+  $type = 'ul';
+  // The following attributes apply to the list tag (e.g.,  or ).
+  $attributes = array(
+    'id' => 'my-custom-listing',
+    // A string or indexed (string) array with the classes for the list tag.
+    'class' => 'custom-class',
+  );
+
+  $build = theme('item_list_without_wrapper',
+    array(
+      'items' => $items,
+      // for item_list theme
+      //      'title' => $title,
+      //      'type' => $type,
+      //     'attributes' => $attributes,
+    )
+  );
+  return $build;
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function page_with_grouped_news_entity_insert($entity, $type) {
+  page_with_grouped_news_clear_cache($entity, $type);
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function page_with_grouped_news_entity_update($entity, $type) {
+  page_with_grouped_news_clear_cache($entity, $type);
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function page_with_grouped_news_entity_delete($entity, $type) {
+  page_with_grouped_news_clear_cache($entity, $type);
+}
+
+/**
+ * Cuctom clear cache implementation.
+ *
+ * @param object $entity
+ *    The entity object.
+ * @param string $type
+ *    The type of entity being updated (i.e. node, user, comment).
+ */
+function page_with_grouped_news_clear_cache($entity, $type) {
+  if (($type == 'node' && $entity->type == 'news') || ($type == 'taxonomy_term' && $entity->vocabulary_machine_name == 'categories')) {
+    cache_clear_all('page_with_grouped_news_data', 'cache');
+    drupal_static_reset('page_with_grouped_news_select_news');
+  }
+}
+
+
+/**
+ * Implement hook theme
+ */
+function page_with_grouped_news_theme() {
+  return array(
+    'item_list_without_wrapper' => array(
+  //'variables' => array( -here should be function parameters'items','type','attributes' itc.
+      'variables' => array('items' => array()
+      ),
+  // 'template' => 'page_with_grouped_news_theme'
+    )
+  );
+}
+
+ //custom theme should begin from "theme"
+function theme_item_list_without_wrapper($variables) {
+  $items = $variables['items'];
+
+
+  // Only output the list container and title, if there are any list items.
+  // Check to see whether the block title exists before adding a header.
+  // Empty headers are not semantic and present accessibility challenges.
+
+
+  if (!empty($items)) {
+    $output = '<ul>';
+    foreach ($items as $item) {
+      $children = array();
+      $data = '';
+      if (is_array($item)) {
+        foreach ($item as $key => $value) {
+          if ($key == 'data') {
+            $data = $value;
+          }
+          elseif ($key == 'children') {
+            $children = $value;
+          }
+        }
+      }
+      else {
+        $data = $item;
+      }
+      if (count($children) > 0) {
+        // Render nested list.
+        $data .= theme_item_list_without_wrapper(array('items' => $children));
+      }
+      $output .= '<li>' . $data . "</li>\n";
+    }
+    $output .= "</ul>";
+  }
+  return $output;
+}
+
+     //call back function for AJAX
+function page_with_grouped_ajax_link_change_color($type = 'ajax') {
+  if ($type == 'ajax') {
+    $commands = array();
+    // See ajax_example_advanced.inc for more details on the available commands
+    // and how to use them.
+
+    $a = array("red", "green", "blue", "yellow", "brown", "magenta", "grey");
+
+    $rand_keys = array_rand($a, 1);
+    $commands[] = array(
+      'command' => 'changeColor',
+      // data which will used in JS
+      'data' => $a[$rand_keys],
+    );
+
+    $page = array(
+      '#type' => $type,
+      '#commands' => $commands,
+    );
+    ajax_deliver($page);
+  }
+  //else {
+   // $output = t("This is some content delivered via a page load.");
+   // return $output;
+  //}
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function page_with_grouped_news_block_info() {
+  $blocks = array();
+  $blocks['register_block'] = array(
+    'info' => t('Register block'),
+  );
+
+  return $blocks;
+}
+
+function page_with_grouped_news_block_view($delta = '') {
+ // $items = array();
+  $block = array();
+  switch($delta) {
+    case 'register_block':
+  $block['subject'] =  ('Register block');
+  //Pass data through theme function.
+//  $block['content'] = theme('item_list', array(
+//    'items' => $items));
+
+  $block['content'] = drupal_get_form('page_with_grouped_news_register_form');
+  break;
+  }
+  return $block;
+}
+
+function page_with_grouped_news_register_form($form, &$form_state) {
+
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#size' => 20,
+    '#required' => TRUE,
+  );
+
+  $form['is18'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Do you older then 18?'),
+    '#ajax' => array(
+      'callback' => 'identifiers_callback_form',
+      'wrapper' => 'textfields',
+      'effect' => 'fade',
+    ),
+  );
+
+  $form['for18'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Only for adults 18'),
+    '#ajax' => array(
+      'callback' => 'identifiers_callback_form',
+      'wrapper' => 'textfields',
+      'effect' => 'fade',
+    ),
+    '#size' => 10,
+  );
+
+  $form['mytextcontainer'] = array(
+    '#type' => 'container',
+    '#prefix' => '<div id="textfields">',
+    '#suffix' => '</div>',
+    // creates borders
+    //'#type' => 'fieldset',
+  );
+
+  // Since checkboxes return TRUE or FALSE, we have to check that
+  // $form_state has been filled as well as what it contains.
+  if (!empty($form_state['values']['is18']) && $form_state['values']['is18']) {
+    $form['mytextcontainer']['fname'] = array(
+      '#type' => 'textfield',
+      '#title' => t('First Name'),
+      '#size' => 20,
+    );
+    $form['mytextcontainer']['lname'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Last name'),
+      '#size' => 20,
+    );
+  }
+
+  if (!empty($form_state['values']['for18']) && $form_state['values']['for18']) {
+    $form['mytextcontainer']['link'] = array(
+      '#type' => 'link',
+      '#title' => t('Google'),
+      '#href' => 'http://google.com.ua/',
+  );
+
+  }
+
+
+//  $form['submit'] = array(
+//    '#type' => 'submit',
+//    '#value' => t('Submit'),
+//
+//  );
+
+  return $form;
+}
+
+function identifiers_callback_form($form, &$form_state) {
+  return $form['mytextcontainer'];
+}
+
+
+
